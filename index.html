@@ -5,14 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>English Pronunciation Practice</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-        #word, #sentence { font-size: 24px; margin: 20px; }
-        #feedback { margin-top: 20px; font-weight: bold; color: green; }
-        select { margin: 10px; padding: 5px; }
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; background-color: #f4f4f4; color: #333; }
+        #word, #sentence { font-size: 24px; margin: 20px; font-weight: bold; }
+        #feedback, #sentence-feedback, #tip, #streak { margin-top: 20px; font-weight: bold; }
+        #feedback { color: green; }
+        #sentence-feedback { color: blue; }
+        #tip { color: orange; }
+        #streak { color: red; }
+        select, button { margin: 10px; padding: 10px; border: none; border-radius: 5px; cursor: pointer; }
+        button { background-color: #007bff; color: white; }
+        button img { width: 20px; height: 20px; vertical-align: middle; }
     </style>
 </head>
 <body>
-    <h1>English Pronunciation Practice (British)</h1>
+    <h1>English Pronunciation Practice </h1>
+    <p id="streak">🔥 Streak: <span id="streak-count">0</span> days</p>
     <label for="difficulty">Choose difficulty:</label>
     <select id="difficulty" onchange="changeDifficulty()">
         <option value="easy">Easy</option>
@@ -21,13 +28,32 @@
     </select>
     <p id="lesson">Today's Lesson: Pronounce the given word and sentence correctly!</p>
     <p id="word">Hello</p>
+    <p><strong>Sounds like:</strong> <span id="phonetic">/həˈləʊ/</span></p>
     <p id="sentence">Hello, how are you today?</p>
-    <button onclick="speakWord()">Listen to Word</button>
-    <button onclick="speakSentence()">Listen to Sentence</button>
-    <button onclick="startRecognition()">Speak</button>
+    <button onclick="speakWord()"><img src="speaker-icon.png" alt="Speak"> Listen to Word</button>
+    <button onclick="speakSentence()"><img src="speaker-icon.png" alt="Speak"> Listen to Sentence</button>
+    <button onclick="startRecognition()"><img src="mic-icon.png" alt="Mic"> Speak</button>
+    <button onclick="nextWordSentence()">Next</button>
     <p id="feedback"></p>
+    <p id="sentence-feedback"></p>
+    <p id="tip"></p>
     
     <script>
+        let streak = localStorage.getItem("streak") || 0;
+        document.getElementById("streak-count").textContent = streak;
+        
+        function updateStreak() {
+            streak++;
+            localStorage.setItem("streak", streak);
+            document.getElementById("streak-count").textContent = streak;
+        }
+        
+        function resetStreak() {
+            streak = 0;
+            localStorage.setItem("streak", streak);
+            document.getElementById("streak-count").textContent = streak;
+        }
+        
         const words = {
             easy: ["Hello", "Apple", "Water", "Dog", "Cat"],
             medium: ["Schedule", "University", "Banana", "Elephant", "Chocolate"],
@@ -39,15 +65,21 @@
             hard: ["Being an entrepreneur requires dedication.", "It was a phenomenal experience.", "His conscientious efforts paid off."]
         };
         let currentDifficulty = "easy";
-        let currentWord = words[currentDifficulty][0];
-        let currentSentence = sentences[currentDifficulty][0];
+        let currentWord, currentSentence;
 
         function changeDifficulty() {
             currentDifficulty = document.getElementById("difficulty").value;
+            nextWordSentence();
+        }
+
+        function nextWordSentence() {
             currentWord = words[currentDifficulty][Math.floor(Math.random() * words[currentDifficulty].length)];
             currentSentence = sentences[currentDifficulty][Math.floor(Math.random() * sentences[currentDifficulty].length)];
             document.getElementById("word").textContent = currentWord;
             document.getElementById("sentence").textContent = currentSentence;
+            document.getElementById("feedback").textContent = "";
+            document.getElementById("sentence-feedback").textContent = "";
+            document.getElementById("tip").textContent = "";
         }
         
         function speakWord() {
@@ -75,26 +107,27 @@
         
         function checkPronunciation(spoken) {
             let feedback = document.getElementById("feedback");
-            if (spoken.toLowerCase() === currentWord.toLowerCase() || spoken.toLowerCase() === currentSentence.toLowerCase()) {
+            let sentenceFeedback = document.getElementById("sentence-feedback");
+            let tip = document.getElementById("tip");
+            
+            if (spoken.toLowerCase() === currentWord.toLowerCase()) {
                 feedback.textContent = "Correct pronunciation! ✅";
+                updateStreak();
             } else {
                 feedback.textContent = "Try again! ❌ (You said: " + spoken + ")";
+                tip.textContent = "Tip: Break the word into syllables and practice slowly.";
+                resetStreak();
+            }
+            
+            if (spoken.toLowerCase() === currentSentence.toLowerCase()) {
+                sentenceFeedback.textContent = "Great fluency! ✅";
+                updateStreak();
+            } else {
+                sentenceFeedback.textContent = "Try improving fluency! ❌";
+                tip.textContent = "Tip: Focus on rhythm and stress. Listen carefully and repeat.";
+                resetStreak();
             }
         }
-
-        function setDailyLesson() {
-            currentWord = words[currentDifficulty][Math.floor(Math.random() * words[currentDifficulty].length)];
-            currentSentence = sentences[currentDifficulty][Math.floor(Math.random() * sentences[currentDifficulty].length)];
-            document.getElementById("word").textContent = currentWord;
-            document.getElementById("sentence").textContent = currentSentence;
-        }
-
-        function setDailyReminder() {
-            alert("Don't forget to practice your pronunciation today!");
-        }
-
-        setDailyLesson();
-        setTimeout(setDailyReminder, 5000); // Reminder after 5 seconds (for testing purposes)
     </script>
 </body>
 </html>
