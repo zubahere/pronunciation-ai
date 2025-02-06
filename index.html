@@ -55,14 +55,21 @@
         }
 
         function fetchWord() {
-            fetch("https://api.dictionaryapi.dev/api/v2/entries/en/random")
+            fetch("https://random-word-api.herokuapp.com/word")
                 .then(response => response.json())
                 .then(data => {
-                    let wordData = data[0];
-                    let word = wordData.word;
-                    let phonetic = wordData.phonetics[0]?.text || "N/A";
+                    let word = data[0];
                     document.getElementById("word").textContent = word;
-                    document.getElementById("phonetic").textContent = phonetic;
+                    document.getElementById("phonetic").textContent = "Loading pronunciation...";
+                    fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            let phonetic = data[0]?.phonetics[0]?.text || "N/A";
+                            document.getElementById("phonetic").textContent = phonetic;
+                        })
+                        .catch(() => {
+                            document.getElementById("phonetic").textContent = "N/A";
+                        });
                     document.getElementById("sentence").textContent = `Use '${word}' in a sentence.`;
                 })
                 .catch(error => {
@@ -91,6 +98,24 @@
             let utterance = new SpeechSynthesisUtterance(sentence);
             utterance.lang = "en-GB";
             speechSynthesis.speak(utterance);
+        }
+
+        function startRecognition() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = "en-GB";
+            recognition.start();
+            recognition.onresult = (event) => {
+                let spokenWord = event.results[0][0].transcript;
+                let correctWord = document.getElementById("word").textContent;
+                let feedback = document.getElementById("feedback");
+                if (spokenWord.toLowerCase() === correctWord.toLowerCase()) {
+                    feedback.textContent = "✅ Correct pronunciation!";
+                    updateStreak();
+                } else {
+                    feedback.textContent = "❌ Try again: " + correctWord;
+                    resetStreak();
+                }
+            };
         }
 
         window.onload = fetchWord;
