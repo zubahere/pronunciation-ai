@@ -18,7 +18,7 @@
     </style>
 </head>
 <body>
-    <h1>English Pronunciation Practice </h1>
+    <h1>English Pronunciation Practice</h1>
     <p id="streak">🔥 Streak: <span id="streak-count">0</span> days</p>
     <label for="difficulty">Choose difficulty:</label>
     <select id="difficulty" onchange="changeDifficulty()">
@@ -27,9 +27,9 @@
         <option value="hard">Hard</option>
     </select>
     <p id="lesson">Today's Lesson: Pronounce the given word and sentence correctly!</p>
-    <p id="word">Hello</p>
-    <p><strong>Sounds like:</strong> <span id="phonetic">/həˈləʊ/</span></p>
-    <p id="sentence">Hello, how are you today?</p>
+    <p id="word">Loading...</p>
+    <p><strong>Sounds like:</strong> <span id="phonetic">Loading...</span></p>
+    <p id="sentence">Generating sentence...</p>
     <button onclick="speakWord()"><img src="speaker-icon.png" alt="Speak"> Listen to Word</button>
     <button onclick="speakSentence()"><img src="speaker-icon.png" alt="Speak"> Listen to Sentence</button>
     <button onclick="startRecognition()"><img src="mic-icon.png" alt="Mic"> Speak</button>
@@ -41,93 +41,59 @@
     <script>
         let streak = localStorage.getItem("streak") || 0;
         document.getElementById("streak-count").textContent = streak;
-        
+
         function updateStreak() {
             streak++;
             localStorage.setItem("streak", streak);
             document.getElementById("streak-count").textContent = streak;
         }
-        
+
         function resetStreak() {
             streak = 0;
             localStorage.setItem("streak", streak);
             document.getElementById("streak-count").textContent = streak;
         }
-        
-        const words = {
-            easy: ["Hello", "Apple", "Water", "Dog", "Cat"],
-            medium: ["Schedule", "University", "Banana", "Elephant", "Chocolate"],
-            hard: ["Entrepreneur", "Phenomenon", "Miscellaneous", "Conscientious", "Architecture"]
-        };
-        const sentences = {
-            easy: ["Hello, how are you today?", "I have an apple.", "The water is cold."],
-            medium: ["My university is very big.", "The banana is yellow.", "Chocolate is my favorite treat."],
-            hard: ["Being an entrepreneur requires dedication.", "It was a phenomenal experience.", "His conscientious efforts paid off."]
-        };
-        let currentDifficulty = "easy";
-        let currentWord, currentSentence;
 
-        function changeDifficulty() {
-            currentDifficulty = document.getElementById("difficulty").value;
-            nextWordSentence();
+        function fetchWord() {
+            fetch("https://api.dictionaryapi.dev/api/v2/entries/en/random")
+                .then(response => response.json())
+                .then(data => {
+                    let wordData = data[0];
+                    let word = wordData.word;
+                    let phonetic = wordData.phonetics[0]?.text || "N/A";
+                    document.getElementById("word").textContent = word;
+                    document.getElementById("phonetic").textContent = phonetic;
+                    document.getElementById("sentence").textContent = `Use '${word}' in a sentence.`;
+                })
+                .catch(error => {
+                    console.error("Error fetching word:", error);
+                    document.getElementById("word").textContent = "Error loading word.";
+                    document.getElementById("phonetic").textContent = "N/A";
+                });
         }
 
         function nextWordSentence() {
-            currentWord = words[currentDifficulty][Math.floor(Math.random() * words[currentDifficulty].length)];
-            currentSentence = sentences[currentDifficulty][Math.floor(Math.random() * sentences[currentDifficulty].length)];
-            document.getElementById("word").textContent = currentWord;
-            document.getElementById("sentence").textContent = currentSentence;
+            fetchWord();
             document.getElementById("feedback").textContent = "";
             document.getElementById("sentence-feedback").textContent = "";
             document.getElementById("tip").textContent = "";
         }
-        
+
         function speakWord() {
-            let utterance = new SpeechSynthesisUtterance(currentWord);
+            let word = document.getElementById("word").textContent;
+            let utterance = new SpeechSynthesisUtterance(word);
             utterance.lang = "en-GB";
             speechSynthesis.speak(utterance);
         }
-        
+
         function speakSentence() {
-            let utterance = new SpeechSynthesisUtterance(currentSentence);
+            let sentence = document.getElementById("sentence").textContent;
+            let utterance = new SpeechSynthesisUtterance(sentence);
             utterance.lang = "en-GB";
             speechSynthesis.speak(utterance);
         }
-        
-        function startRecognition() {
-            let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.lang = "en-GB";
-            recognition.start();
-            
-            recognition.onresult = function(event) {
-                let spokenWord = event.results[0][0].transcript;
-                checkPronunciation(spokenWord);
-            };
-        }
-        
-        function checkPronunciation(spoken) {
-            let feedback = document.getElementById("feedback");
-            let sentenceFeedback = document.getElementById("sentence-feedback");
-            let tip = document.getElementById("tip");
-            
-            if (spoken.toLowerCase() === currentWord.toLowerCase()) {
-                feedback.textContent = "Correct pronunciation! ✅";
-                updateStreak();
-            } else {
-                feedback.textContent = "Try again! ❌ (You said: " + spoken + ")";
-                tip.textContent = "Tip: Break the word into syllables and practice slowly.";
-                resetStreak();
-            }
-            
-            if (spoken.toLowerCase() === currentSentence.toLowerCase()) {
-                sentenceFeedback.textContent = "Great fluency! ✅";
-                updateStreak();
-            } else {
-                sentenceFeedback.textContent = "Try improving fluency! ❌";
-                tip.textContent = "Tip: Focus on rhythm and stress. Listen carefully and repeat.";
-                resetStreak();
-            }
-        }
+
+        window.onload = fetchWord;
     </script>
 </body>
 </html>
