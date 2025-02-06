@@ -7,11 +7,14 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; background-color: #f4f4f4; color: #333; }
         #word, #sentence { font-size: 24px; margin: 20px; font-weight: bold; }
-        #feedback, #sentence-feedback, #tip, #streak { margin-top: 20px; font-weight: bold; }
+        #feedback, #sentence-feedback, #tip, #streak, #word-count, #sentence-count, #reward { margin-top: 20px; font-weight: bold; }
         #feedback { color: green; }
         #sentence-feedback { color: blue; }
         #tip { color: orange; }
         #streak { color: red; }
+        #word-count { color: purple; }
+        #sentence-count { color: teal; }
+        #reward { color: gold; }
         select, button { margin: 10px; padding: 10px; border: none; border-radius: 5px; cursor: pointer; }
         button { background-color: #007bff; color: white; }
         button img { width: 20px; height: 20px; vertical-align: middle; }
@@ -20,8 +23,11 @@
 <body>
     <h1>English Pronunciation Practice</h1>
     <p id="streak">🔥 Streak: <span id="streak-count">0</span> days</p>
+    <p id="word-count">✅ Words Pronounced: <span id="word-count-value">0</span></p>
+    <p id="sentence-count">📜 Sentences Pronounced: <span id="sentence-count-value">0</span></p>
+    <p id="reward">🏆 Reward: <span id="reward-value">Beginner</span></p>
     <label for="difficulty">Choose difficulty:</label>
-    <select id="difficulty" onchange="changeDifficulty()">
+    <select id="difficulty" onchange="fetchWord()">
         <option value="easy">Easy</option>
         <option value="medium">Medium</option>
         <option value="hard">Hard</option>
@@ -33,6 +39,7 @@
     <button onclick="speakWord()"><img src="speaker-icon.png" alt="Speak"> Listen to Word</button>
     <button onclick="speakSentence()"><img src="speaker-icon.png" alt="Speak"> Listen to Sentence</button>
     <button onclick="startRecognition()"><img src="mic-icon.png" alt="Mic"> Speak</button>
+    <button onclick="startSentenceRecognition()"><img src="mic-icon.png" alt="Mic"> Speak Sentence</button>
     <button onclick="nextWordSentence()">Next</button>
     <p id="feedback"></p>
     <p id="sentence-feedback"></p>
@@ -40,7 +47,14 @@
     
     <script>
         let streak = localStorage.getItem("streak") || 0;
+        let wordCount = localStorage.getItem("wordCount") || 0;
+        let sentenceCount = localStorage.getItem("sentenceCount") || 0;
+        let rewardLevel = localStorage.getItem("rewardLevel") || "Beginner";
+
         document.getElementById("streak-count").textContent = streak;
+        document.getElementById("word-count-value").textContent = wordCount;
+        document.getElementById("sentence-count-value").textContent = sentenceCount;
+        document.getElementById("reward-value").textContent = rewardLevel;
 
         function updateStreak() {
             streak++;
@@ -54,7 +68,60 @@
             document.getElementById("streak-count").textContent = streak;
         }
 
+        function updateWordCount() {
+            wordCount++;
+            localStorage.setItem("wordCount", wordCount);
+            document.getElementById("word-count-value").textContent = wordCount;
+            checkReward();
+        }
+
+        function updateSentenceCount() {
+            sentenceCount++;
+            localStorage.setItem("sentenceCount", sentenceCount);
+            document.getElementById("sentence-count-value").textContent = sentenceCount;
+            checkReward();
+        }
+
+        function checkReward() {
+            let total = wordCount + sentenceCount;
+            if (total >= 50) {
+                rewardLevel = "Master";
+            } else if (total >= 30) {
+                rewardLevel = "Advanced";
+            } else if (total >= 15) {
+                rewardLevel = "Intermediate";
+            } else {
+                rewardLevel = "Beginner";
+            }
+            localStorage.setItem("rewardLevel", rewardLevel);
+            document.getElementById("reward-value").textContent = rewardLevel;
+        }
+
+        function generateSentence(word) {
+            const sentences = {
+                easy: [
+                    `I like the word "${word}".`,
+                    `Can you say "${word}"?`,
+                    `The word "${word}" is interesting.`
+                ],
+                medium: [
+                    `The word "${word}" is often used in conversations.`,
+                    `I find it easy to pronounce "${word}".`,
+                    `"${word}" is a word that describes something.`
+                ],
+                hard: [
+                    `The complexity of the word "${word}" makes it challenging.`,
+                    `"${word}" is a term that requires careful pronunciation.`,
+                    `Using "${word}" in a sentence can be tricky.`
+                ]
+            };
+            const difficulty = document.getElementById("difficulty").value;
+            const sentenceList = sentences[difficulty];
+            return sentenceList[Math.floor(Math.random() * sentenceList.length)];
+        }
+
         function fetchWord() {
+            let difficulty = document.getElementById("difficulty").value;
             fetch("https://random-word-api.herokuapp.com/word")
                 .then(response => response.json())
                 .then(data => {
@@ -70,7 +137,9 @@
                         .catch(() => {
                             document.getElementById("phonetic").textContent = "N/A";
                         });
-                    document.getElementById("sentence").textContent = `Use '${word}' in a sentence.`;
+                    // Generate a sentence using the word
+                    const sentence = generateSentence(word);
+                    document.getElementById("sentence").textContent = sentence;
                 })
                 .catch(error => {
                     console.error("Error fetching word:", error);
@@ -111,8 +180,28 @@
                 if (spokenWord.toLowerCase() === correctWord.toLowerCase()) {
                     feedback.textContent = "✅ Correct pronunciation!";
                     updateStreak();
+                    updateWordCount();
                 } else {
                     feedback.textContent = "❌ Try again: " + correctWord;
+                    resetStreak();
+                }
+            };
+        }
+
+        function startSentenceRecognition() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = "en-GB";
+            recognition.start();
+            recognition.onresult = (event) => {
+                let spokenSentence = event.results[0][0].transcript;
+                let correctSentence = document.getElementById("sentence").textContent;
+                let feedback = document.getElementById("sentence-feedback");
+                if (spokenSentence.toLowerCase() === correctSentence.toLowerCase()) {
+                    feedback.textContent = "✅ Fluent pronunciation!";
+                    updateStreak();
+                    updateSentenceCount();
+                } else {
+                    feedback.textContent = "❌ Try again: " + correctSentence;
                     resetStreak();
                 }
             };
